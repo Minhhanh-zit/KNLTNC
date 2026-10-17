@@ -1,0 +1,164 @@
+// HE THONG QUAN LY RAP PHIM - LAP TRINH NANG CAO
+// SQL Server conventions; import this file into https://dbdiagram.io
+// Thiet ke moi cho mon Lap trinh nang cao; repo CineHunt cu chi dung de tham khao.
+Project CinemaOperations {
+  database_type: 'SQL Server'
+  Note: 'MVP van hanh rap: phim, phong, ghe, lich chieu, ban ve tai quay, soat ve, bao cao.'
+}
+
+Table roles {
+  role_id INT [pk, not null]
+  role_code VARCHAR(30) [not null, unique]
+  role_name NVARCHAR(80) [not null]
+}
+
+Table cinemas {
+  cinema_id INT [pk, not null]
+  cinema_name NVARCHAR(150) [not null]
+  address NVARCHAR(255) [not null]
+  status VARCHAR(20) [not null]
+}
+
+Table users {
+  user_id INT [pk, not null]
+  role_id INT [not null]
+  cinema_id INT
+  username VARCHAR(80) [not null, unique]
+  full_name NVARCHAR(120) [not null]
+  password_hash VARCHAR(255) [not null]
+  status VARCHAR(20) [not null]
+  created_at DATETIME2(0) [not null]
+}
+
+Table movies {
+  movie_id INT [pk, not null]
+  title NVARCHAR(250) [not null]
+  description NVARCHAR(MAX)
+  duration_minutes INT [not null]
+  release_date DATE
+  age_rating VARCHAR(10) [not null]
+  status VARCHAR(20) [not null]
+}
+
+Table genres {
+  genre_id INT [pk, not null]
+  genre_name NVARCHAR(80) [not null, unique]
+}
+
+Table movie_genres {
+  movie_id INT [not null]
+  genre_id INT [not null]
+  indexes {
+    (movie_id, genre_id) [pk]
+  }
+}
+
+Table rooms {
+  room_id INT [pk, not null]
+  cinema_id INT [not null]
+  room_name NVARCHAR(80) [not null]
+  status VARCHAR(20) [not null]
+  indexes {
+    (cinema_id, room_name) [unique]
+  }
+}
+
+Table seat_types {
+  seat_type_id INT [pk, not null]
+  type_name NVARCHAR(60) [not null, unique]
+  price_surcharge DECIMAL(12,2) [not null]
+}
+
+Table seats {
+  seat_id INT [pk, not null]
+  room_id INT [not null]
+  seat_type_id INT [not null]
+  row_label VARCHAR(5) [not null]
+  seat_number INT [not null]
+  is_active bit [not null]
+  indexes {
+    (room_id, row_label, seat_number) [unique]
+  }
+}
+
+Table showtimes {
+  showtime_id BIGINT [pk, not null]
+  movie_id INT [not null]
+  room_id INT [not null]
+  starts_at DATETIMEOFFSET(0) [not null]
+  ends_at DATETIMEOFFSET(0) [not null]
+  base_price DECIMAL(12,2) [not null]
+  status VARCHAR(20) [not null]
+  created_by INT [not null]
+  Note: 'Chong trung lich theo phong (co thoi gian dem) bang giao dich nghiep vu; CHECK ends_at > starts_at.'
+}
+
+Table showtime_seats {
+  showtime_seat_id BIGINT [pk, not null]
+  showtime_id BIGINT [not null]
+  seat_id INT [not null]
+  indexes {
+    (showtime_id, seat_id) [unique]
+  }
+  Note: 'Tao khi cong bo suat; seat_id phai thuoc room_id cua suat (nghiep vu lien bang).'
+}
+
+Table sales {
+  sale_id BIGINT [pk, not null]
+  receipt_code VARCHAR(40) [not null, unique]
+  showtime_id BIGINT [not null]
+  cashier_id INT [not null]
+  status VARCHAR(20) [not null]
+  created_at DATETIME2(0) [not null]
+  completed_at DATETIME2(0)
+  Note: 'Moi hoa don chua ve cua dung mot suat chieu; chi chot PAID sau khi thanh toan hop le.'
+}
+
+Table payments {
+  payment_id BIGINT [pk, not null]
+  sale_id BIGINT [not null, unique]
+  amount DECIMAL(12,2) [not null]
+  method VARCHAR(20) [not null]
+  status VARCHAR(20) [not null]
+  confirmed_by INT [not null]
+  confirmed_at DATETIME2(0) [not null]
+  Note: 'Thanh toan CASH hoac BANK_TRANSFER xac nhan thu cong; mot ban ghi cuoi cung moi giao dich.'
+}
+
+Table tickets {
+  ticket_id BIGINT [pk, not null]
+  sale_id BIGINT [not null]
+  showtime_seat_id BIGINT [not null, unique]
+  ticket_code VARCHAR(60) [not null, unique]
+  unit_price DECIMAL(12,2) [not null]
+  issued_at DATETIME2(0) [not null]
+  Note: 'Khong phat hanh neu sale chua PAID; showtime cua ghe phai bang showtime cua sale; khong hoan/huy ve da ban trong MVP.'
+}
+
+Table ticket_checkins {
+  checkin_id BIGINT [pk, not null]
+  ticket_id BIGINT [not null, unique]
+  checked_by INT [not null]
+  checked_at DATETIME2(0) [not null]
+}
+
+Ref: users.role_id > roles.role_id
+Ref: users.cinema_id > cinemas.cinema_id
+Ref: movie_genres.movie_id > movies.movie_id
+Ref: movie_genres.genre_id > genres.genre_id
+Ref: rooms.cinema_id > cinemas.cinema_id
+Ref: seats.room_id > rooms.room_id
+Ref: seats.seat_type_id > seat_types.seat_type_id
+Ref: showtimes.movie_id > movies.movie_id
+Ref: showtimes.room_id > rooms.room_id
+Ref: showtimes.created_by > users.user_id
+Ref: showtime_seats.showtime_id > showtimes.showtime_id
+Ref: showtime_seats.seat_id > seats.seat_id
+Ref: sales.showtime_id > showtimes.showtime_id
+Ref: sales.cashier_id > users.user_id
+Ref: payments.sale_id > sales.sale_id
+Ref: payments.confirmed_by > users.user_id
+Ref: tickets.sale_id > sales.sale_id
+Ref: tickets.showtime_seat_id > showtime_seats.showtime_seat_id
+Ref: ticket_checkins.ticket_id > tickets.ticket_id
+Ref: ticket_checkins.checked_by > users.user_id
