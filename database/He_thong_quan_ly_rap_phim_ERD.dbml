@@ -1,19 +1,22 @@
-// Hệ thống quản lý rạp phim | ERD V4 | SQL Server
+// Hệ thống quản lý rạp phim | Sơ đồ quan hệ cơ sở dữ liệu V4
 Project CinemaManagement {
   database_type: 'SQL Server'
 }
 Table roles {
+  Note: 'Vai trò và phân quyền'
   role_id INT [pk, increment]
   role_code VARCHAR(30) [not null, unique]
   role_name NVARCHAR(80) [not null]
 }
 Table cinemas {
+  Note: 'Thông tin rạp phim'
   cinema_id INT [pk, increment]
   cinema_name NVARCHAR(150) [not null]
   address NVARCHAR(255) [not null]
   status VARCHAR(20) [not null, default: 'ACTIVE']
 }
 Table users {
+  Note: 'Tài khoản nhân viên'
   user_id INT [pk, increment]
   role_id INT [not null]
   cinema_id INT
@@ -24,6 +27,7 @@ Table users {
   created_at DATETIME2(0) [not null]
 }
 Table movies {
+  Note: 'Thông tin phim'
   movie_id INT [pk, increment]
   title NVARCHAR(250) [not null]
   description NVARCHAR(MAX)
@@ -33,16 +37,19 @@ Table movies {
   status VARCHAR(20) [not null, default: 'DRAFT']
 }
 Table genres {
+  Note: 'Thể loại phim'
   genre_id INT [pk, increment]
   genre_name NVARCHAR(80) [not null, unique]
   is_active BIT [not null, default: 1]
 }
 Table movie_genres {
+  Note: 'Liên kết phim và thể loại'
   movie_id INT [not null]
   genre_id INT [not null]
   indexes { (movie_id, genre_id) [pk] }
 }
 Table rooms {
+  Note: 'Phòng chiếu'
   room_id INT [pk, increment]
   cinema_id INT [not null]
   room_name NVARCHAR(80) [not null]
@@ -50,12 +57,14 @@ Table rooms {
   indexes { (cinema_id, room_name) [unique] }
 }
 Table seat_types {
+  Note: 'Loại ghế và phụ thu'
   seat_type_id INT [pk, increment]
   type_name NVARCHAR(60) [not null, unique]
   price_surcharge DECIMAL(12,2) [not null, default: 0]
   is_active BIT [not null, default: 1]
 }
 Table seats {
+  Note: 'Ghế trong phòng chiếu'
   seat_id INT [pk, increment]
   room_id INT [not null]
   seat_type_id INT [not null]
@@ -65,6 +74,7 @@ Table seats {
   indexes { (room_id, row_label, seat_number) [unique] }
 }
 Table showtimes {
+  Note: 'Lịch chiếu phim'
   showtime_id BIGINT [pk, increment]
   movie_id INT [not null]
   room_id INT [not null]
@@ -75,6 +85,7 @@ Table showtimes {
   created_by INT [not null]
 }
 Table showtime_seats {
+  Note: 'Ghế theo từng suất chiếu'
   showtime_seat_id BIGINT [pk, increment]
   showtime_id BIGINT [not null]
   seat_id INT [not null]
@@ -86,6 +97,7 @@ Table showtime_seats {
   }
 }
 Table sales {
+  Note: 'Hóa đơn bán vé và thời hạn giữ ghế'
   sale_id BIGINT [pk, increment]
   receipt_code VARCHAR(40) [not null, unique]
   showtime_id BIGINT [not null]
@@ -97,6 +109,7 @@ Table sales {
   held_seat_count INT 
 }
 Table payments {
+  Note: 'Thanh toán hóa đơn'
   payment_id BIGINT [pk, increment]
   sale_id BIGINT [not null, unique]
   amount DECIMAL(12,2) [not null]
@@ -106,6 +119,7 @@ Table payments {
   confirmed_at DATETIME2(0)
 }
 Table tickets {
+  Note: 'Vé xem phim và trạng thái soát vé'
   ticket_id BIGINT [pk, increment]
   sale_id BIGINT [not null]
   showtime_seat_id BIGINT [not null, unique]
@@ -135,4 +149,3 @@ Ref: payments.confirmed_by > users.user_id
 Ref: tickets.sale_id > sales.sale_id
 Ref: tickets.showtime_seat_id > showtime_seats.showtime_seat_id
 Ref: tickets.checked_by > users.user_id
-// usp_cancel_pending_sale, usp_checkin_ticket, usp_publish_showtime.
