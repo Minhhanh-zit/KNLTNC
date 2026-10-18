@@ -1,66 +1,67 @@
 # HỆ THỐNG QUẢN LÝ RẠP PHIM
 
-**Học phần:** Lập trình nâng cao  
-**Bài nộp:** Bước 1 - Phân tích yêu cầu (40%) và Bước 2 - Thiết kế CSDL/ERD (60%)  
-**Hướng công nghệ:** Java Spring Boot và Microsoft SQL Server
+**Học phần:** Kỹ năng lập trình nâng cao  
+**Giai đoạn:** Phân tích yêu cầu và thiết kế CSDL/ERD  
+**Định hướng:** Java Spring Boot + Microsoft SQL Server 2022  
+**Phiên bản thiết kế:** **V4**, 20 Use Case, **14 bảng**, **20 khóa ngoại**
 
-## Database Diagram (ERD)
+> Đây là hệ thống **vận hành rạp và bán vé tại quầy (MVP)**, không phải dự án đặt vé trực tuyến CineHunt. Repo CineHunt cũ chỉ dùng để tham khảo và không được thay đổi.
 
-**[📐 MỞ FILE THIẾT KẾ DBML ĐẦY ĐỦ (15 bảng)](database/He_thong_quan_ly_rap_phim_ERD.dbml)**
+## 1. Tài liệu cơ sở dữ liệu
 
-Để xem sơ đồ có đầy đủ cột, kiểu dữ liệu, PK, FK và chỉ mục, vào **https://dbdiagram.io**, tạo một sơ đồ mới, rồi sao chép nội dung file `.dbml` bên trên vào trình biên tập.
+- [**Mã SQL Server V4**](database/01_cinema_management_schema_v4.sql): tạo database `CinemaManagementDB`, 14 bảng, ràng buộc, các view và **6 stored procedure** xử lý nghiệp vụ.
+- [**Thiết kế ERD bằng DBML**](database/He_thong_quan_ly_rap_phim_ERD.dbml): 14 bảng, 20 quan hệ FK. Có thể mở [dbdiagram.io](https://dbdiagram.io), tạo sơ đồ mới và dán nội dung tệp `.dbml`.
 
-### Sơ đồ quan hệ tổng quan
+Danh sách **14 bảng**:
 
-```mermaid
-erDiagram
-    ROLES ||--o{ USERS : "phan quyen"
-    CINEMAS |o--o{ USERS : "quan ly nhan su"
-    CINEMAS ||--o{ ROOMS : "co"
-    ROOMS ||--o{ SEATS : "co"
-    SEAT_TYPES ||--o{ SEATS : "phan loai"
-    MOVIES ||--o{ MOVIE_GENRES : "thuoc"
-    GENRES ||--o{ MOVIE_GENRES : "phan loai"
-    MOVIES ||--o{ SHOWTIMES : "duoc chieu"
-    ROOMS ||--o{ SHOWTIMES : "to chuc"
-    USERS ||--o{ SHOWTIMES : "tao lich"
-    SHOWTIMES ||--o{ SHOWTIME_SEATS : "co ghe"
-    SEATS ||--o{ SHOWTIME_SEATS : "tham gia"
-    SHOWTIMES ||--o{ SALES : "duoc ban"
-    USERS ||--o{ SALES : "ban ve"
-    SALES ||--o| PAYMENTS : "thanh toan"
-    USERS ||--o{ PAYMENTS : "xac nhan"
-    SALES ||--o{ TICKETS : "phat hanh"
-    SHOWTIME_SEATS ||--o| TICKETS : "gan ve"
-    TICKETS ||--o| TICKET_CHECKINS : "soat ve"
-    USERS ||--o{ TICKET_CHECKINS : "kiem tra"
-```
+`roles`, `cinemas`, `users`, `movies`, `genres`, `movie_genres`, `rooms`, `seat_types`, `seats`, `showtimes`, `showtime_seats`, `sales`, `payments`, `tickets`.
 
-> Sơ đồ Mermaid phía trên thể hiện các quan hệ chính. File DBML là nguồn thiết kế chi tiết dùng để kiểm tra PK, FK, kiểu dữ liệu và quan hệ N-N.
+**Khác phiên bản cũ:** không còn bảng `ticket_checkins`; lượt soát vé thành công được ghi trực tiếp bằng `tickets.checked_at` và `tickets.checked_by`. Giữ ghế tạm theo hóa đơn: `sales.hold_expires_at`, `showtime_seats.held_sale_id` và `showtime_seats.held_unit_price`.
 
-## Phạm vi MVP
+## 2. Nghiệp vụ MVP
 
-- Quản lý rạp, nhân viên và phân quyền.
-- Quản lý phim, thể loại, phòng chiếu, loại ghế và ghế.
-- Lập suất chiếu và phát hiện trùng lịch.
-- Bán vé tại quầy, thu tiền mặt hoặc xác nhận chuyển khoản thủ công.
-- Phát hành vé, soát vé, thống kê số vé và doanh thu.
+- Quản lý rạp, nhân viên, vai trò; phim và thể loại; phòng, loại ghế và ghế.
+- Tạo/công bố suất chiếu; kiểm tra trùng phòng và khoảng thời gian dọn phòng.
+- Bán vé tại quầy: **giữ nhiều ghế nguyên tử**, chờ thu tiền mặt hoặc xác nhận chuyển khoản thủ công, phát hành vé.
+- Hết hạn giữ ghế, hủy hóa đơn đang chờ, soát vé một lần và tổng hợp báo cáo.
 
-**Không nằm trong MVP:** AI gợi ý phim, ví điện tử, đặt vé trực tuyến, khuyến mãi, bán đồ ăn.
+**Ngoài phạm vi:** thanh toán trực tuyến tự động, ví điện tử, AI gợi ý phim, chương trình khách hàng thân thiết, bán đồ ăn và đặt vé online.
 
-## Quy tắc nghiệp vụ quan trọng
+## 3. Giữ ghế và chống bán trùng
 
-1. Một phòng không được có hai suất chiếu chồng lấn, kể cả thời gian dọn phòng giữa hai suất.
-2. Mỗi ghế chỉ có một bản ghi ở cùng một suất chiếu: `UNIQUE(showtime_id, seat_id)`.
-3. Mỗi vị trí ghế theo suất chỉ phát hành tối đa một vé: `UNIQUE(showtime_seat_id)` trên `tickets`.
-4. Vé trong hóa đơn phải cùng suất chiếu với hóa đơn; việc kiểm tra này cần xử lý bằng giao dịch/nghiệp vụ, không chỉ dựa vào khóa ngoại.
-5. Một vé chỉ soát thành công một lần: `UNIQUE(ticket_id)` trên `ticket_checkins`.
-6. Quan hệ phim và thể loại là N-N, đã tách thành bảng trung gian `movie_genres` có khóa chính ghép.
+1. Nhân viên tạo hóa đơn `sales` trạng thái `PENDING`, đúng suất chiếu và đúng rạp.
+2. `usp_hold_seats` giữ tất cả ghế yêu cầu trong **một giao dịch**; thời hạn mặc định 5 phút được lưu **một lần tại hóa đơn**.
+3. Sau khi xác nhận đã thu tiền, `usp_confirm_sale_and_issue_tickets` kiểm tra thời hạn, quyền nhân viên, tình trạng ghế và phát hành vé.
+4. `usp_expire_seat_holds` chuyển hóa đơn hết hạn sang `EXPIRED`; ghế quá hạn có thể được yêu cầu giữ lại ngay cả khi tác vụ dọn chưa chạy.
+5. `usp_cancel_pending_sale` xử lý hủy hóa đơn chưa thanh toán; `usp_checkin_ticket` soát vé; `usp_publish_showtime` công bố lịch.
 
-## Danh sách bảng (15)
+Các ràng buộc quan trọng: `UNIQUE(showtime_id, seat_id)` ở `showtime_seats`, `UNIQUE(showtime_seat_id)` ở `tickets`; các điều kiện liên bảng và xử lý đồng thời được kiểm soát thêm trong stored procedure/giao dịch SQL.
 
-`roles`, `cinemas`, `users`, `movies`, `genres`, `movie_genres`, `rooms`, `seat_types`, `seats`, `showtimes`, `showtime_seats`, `sales`, `payments`, `tickets`, `ticket_checkins`.
+> Nếu tiền chuyển khoản đến **sau khi hết hạn giữ**, không được tự phát hành vé. Khoản tiền thực tế cần được đối soát và xử lý thủ công; database không tự hoàn tiền.
 
-**Định hướng chuẩn hóa:** 3NF. Các ràng buộc liên bảng và chống bán vé đồng thời cần được hiện thực bổ sung ở tầng dịch vụ/giao dịch khi lập trình.
+## 4. Kết quả kiểm thử V4 trên SQL Server 2022
 
-*Đây là bản thiết kế riêng cho học phần Lập trình nâng cao. Repo CineHunt khác chỉ được tham khảo và không bị thay đổi.*
+Người thực hiện đã chạy bộ thử nghiệm **trên SQL Server 2022 Docker, ở một database dùng một lần**, và cung cấp log:
+
+| STT | Kịch bản | Kết quả |
+|---|---|---|
+| 1 | Hai quầy đồng thời giữ ghế A5 | **PASS**: một thành công, một thất bại |
+| 2 | Giữ A5 + A6 khi A6 đã bán | **PASS**: rollback cả yêu cầu |
+| 3 | Hóa đơn A hết hạn, B giữ lại ghế | **PASS**: A = EXPIRED; B giữ thành công |
+| 4 | Thanh toán sau hạn trong lúc chờ khóa | **PASS**: không phát hành vé |
+| 5 | Cashier xác nhận hai lần | **PASS**: một payment và một ticket |
+| 6 | Cashier rạp X xử lý hóa đơn rạp Y | **PASS**: bị từ chối |
+
+**Tổng:** `RESULT: 6/6 PASS on actual Microsoft SQL Server`.
+
+> Kết quả này chứng minh **sáu kịch bản nêu trên** trong điều kiện đã thử, **không** có nghĩa mọi tính năng hoặc tình huống sản xuất đều đã được kiểm thử. Cần kiểm thử thêm trùng lịch, dữ liệu bất thường, retry, lỗi kết nối, thanh toán đến muộn và phân quyền ở tầng API.
+
+## 5. Cách tạo cơ sở dữ liệu
+
+1. Chuẩn bị **SQL Server 2022** và một **instance/database thử nghiệm trống**.
+2. Mở `database/01_cinema_management_schema_v4.sql` bằng SSMS, Azure Data Studio hoặc công cụ chạy T-SQL hỗ trợ `GO`.
+3. Chạy script trên môi trường mới. Script sẽ tạo `CinemaManagementDB` nếu chưa tồn tại, rồi tạo bảng/ràng buộc/view/stored procedure.
+
+**Lưu ý:** script **tạo mới**, không phải migration và **không nên chạy lại trên database đã có bảng**. `GO` là dấu phân tách batch của công cụ SQL, không phải lệnh T-SQL hợp lệ để gửi nguyên tệp qua một câu lệnh JDBC.
+
+Khi tích hợp Spring Boot, tài khoản của ứng dụng không nên được quyền cập nhật trực tiếp các bảng giao dịch ngoài cơ chế nghiệp vụ đã kiểm soát.
