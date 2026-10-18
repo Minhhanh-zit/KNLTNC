@@ -5,7 +5,7 @@
 - **Tên đề tài:** Hệ thống quản lý rạp phim
 - **Học phần:** Kỹ năng lập trình nâng cao
 - **Quy mô nhóm:** 05 thành viên
-- **Ký hiệu trong danh sách:** TCN
+- **Nhóm:** TCN
 
 | STT | Mã sinh viên | Họ và tên |
 |---:|---|---|
