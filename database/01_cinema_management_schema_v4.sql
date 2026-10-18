@@ -1,4 +1,4 @@
--- HỆ THỐNG QUẢN LÝ RẠP PHIM | SQL SERVER V4
+-- HỆ THỐNG QUẢN LÝ RẠP PHIM | CƠ SỞ DỮ LIỆU V4
 
 IF DB_ID(N'CinemaManagementDB') IS NULL
 BEGIN
@@ -8,7 +8,7 @@ GO
 USE CinemaManagementDB;
 GO
 
--- Bảng: roles
+-- Bảng: Vai trò và phân quyền (roles)
 CREATE TABLE dbo.roles (
     role_id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_roles PRIMARY KEY,
     role_code VARCHAR(30) NOT NULL CONSTRAINT UQ_roles_code UNIQUE,
@@ -16,7 +16,7 @@ CREATE TABLE dbo.roles (
 );
 GO
 
--- Bảng: cinemas
+-- Bảng: Thông tin rạp phim (cinemas)
 CREATE TABLE dbo.cinemas (
     cinema_id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_cinemas PRIMARY KEY,
     cinema_name NVARCHAR(150) NOT NULL,
@@ -26,7 +26,7 @@ CREATE TABLE dbo.cinemas (
 );
 GO
 
--- Bảng: users
+-- Bảng: Tài khoản nhân viên (users)
 CREATE TABLE dbo.[users] (
     user_id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_users PRIMARY KEY,
     role_id INT NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE dbo.[users] (
 );
 GO
 
--- Bảng: movies
+-- Bảng: Thông tin phim (movies)
 CREATE TABLE dbo.movies (
     movie_id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_movies PRIMARY KEY,
     title NVARCHAR(250) NOT NULL,
@@ -57,7 +57,7 @@ CREATE TABLE dbo.movies (
 );
 GO
 
--- Bảng: genres
+-- Bảng: Thể loại phim (genres)
 CREATE TABLE dbo.genres (
     genre_id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_genres PRIMARY KEY,
     genre_name NVARCHAR(80) NOT NULL CONSTRAINT UQ_genres_name UNIQUE,
@@ -65,7 +65,7 @@ CREATE TABLE dbo.genres (
 );
 GO
 
--- Bảng: movie_genres
+-- Bảng: Liên kết phim và thể loại (movie_genres)
 CREATE TABLE dbo.movie_genres (
     movie_id INT NOT NULL,
     genre_id INT NOT NULL,
@@ -75,7 +75,7 @@ CREATE TABLE dbo.movie_genres (
 );
 GO
 
--- Bảng: rooms
+-- Bảng: Phòng chiếu (rooms)
 CREATE TABLE dbo.rooms (
     room_id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_rooms PRIMARY KEY,
     cinema_id INT NOT NULL,
@@ -87,7 +87,7 @@ CREATE TABLE dbo.rooms (
 );
 GO
 
--- Bảng: seat_types
+-- Bảng: Loại ghế và phụ thu (seat_types)
 CREATE TABLE dbo.seat_types (
     seat_type_id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_seat_types PRIMARY KEY,
     type_name NVARCHAR(60) NOT NULL CONSTRAINT UQ_seat_types_name UNIQUE,
@@ -97,7 +97,7 @@ CREATE TABLE dbo.seat_types (
 );
 GO
 
--- Bảng: seats
+-- Bảng: Ghế trong phòng chiếu (seats)
 CREATE TABLE dbo.seats (
     seat_id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_seats PRIMARY KEY,
     room_id INT NOT NULL,
@@ -112,7 +112,7 @@ CREATE TABLE dbo.seats (
 );
 GO
 
--- Bảng: showtimes
+-- Bảng: Lịch chiếu phim (showtimes)
 CREATE TABLE dbo.showtimes (
     showtime_id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_showtimes PRIMARY KEY,
     movie_id INT NOT NULL,
@@ -134,7 +134,7 @@ CREATE INDEX IX_showtimes_room_start ON dbo.showtimes(room_id, starts_at);
 CREATE INDEX IX_showtimes_movie_start ON dbo.showtimes(movie_id, starts_at);
 GO
 
--- Bảng: showtime_seats
+-- Bảng: Ghế theo từng suất chiếu (showtime_seats)
 CREATE TABLE dbo.showtime_seats (
     showtime_seat_id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_showtime_seats PRIMARY KEY,
     showtime_id BIGINT NOT NULL,
@@ -155,7 +155,7 @@ CREATE INDEX IX_showtime_seats_held_sale ON dbo.showtime_seats(held_sale_id)
     WHERE held_sale_id IS NOT NULL;
 GO
 
--- Bảng: sales
+-- Bảng: Hóa đơn bán vé và thời hạn giữ ghế (sales)
 CREATE TABLE dbo.sales (
     sale_id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_sales PRIMARY KEY,
     receipt_code VARCHAR(40) NOT NULL CONSTRAINT UQ_sales_code UNIQUE,
@@ -184,7 +184,7 @@ ALTER TABLE dbo.showtime_seats ADD CONSTRAINT FK_showtime_seats_hold_sales
     FOREIGN KEY (held_sale_id) REFERENCES dbo.sales(sale_id);
 GO
 
--- Bảng: payments
+-- Bảng: Thanh toán hóa đơn (payments)
 CREATE TABLE dbo.payments (
     payment_id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_payments PRIMARY KEY,
     sale_id BIGINT NOT NULL CONSTRAINT UQ_payments_sale UNIQUE,
@@ -207,7 +207,7 @@ GO
 CREATE INDEX IX_payments_status_confirmed ON dbo.payments([status], confirmed_at);
 GO
 
--- Bảng: tickets
+-- Bảng: Vé xem phim và trạng thái soát vé (tickets)
 CREATE TABLE dbo.tickets (
     ticket_id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_tickets PRIMARY KEY,
     sale_id BIGINT NOT NULL,
@@ -266,7 +266,7 @@ LEFT JOIN dbo.sales s ON s.sale_id=ss.held_sale_id
 LEFT JOIN dbo.tickets t ON t.showtime_seat_id=ss.showtime_seat_id;
 GO
 
--- Thủ tục: usp_hold_seats
+-- Thủ tục: Giữ ghế tạm thời (usp_hold_seats)
 CREATE OR ALTER PROCEDURE dbo.usp_hold_seats
     @sale_id BIGINT, @seat_ids NVARCHAR(MAX), @requested_by INT, @hold_minutes INT = 5
 AS
@@ -352,7 +352,7 @@ BEGIN
 END;
 GO
 
--- Thủ tục: usp_confirm_sale_and_issue_tickets
+-- Thủ tục: Xác nhận thanh toán và phát hành vé (usp_confirm_sale_and_issue_tickets)
 CREATE OR ALTER PROCEDURE dbo.usp_confirm_sale_and_issue_tickets
     @sale_id BIGINT,@method VARCHAR(20),@confirmed_by INT
 AS
@@ -434,7 +434,7 @@ BEGIN
 END;
 GO
 
--- Thủ tục: usp_expire_seat_holds
+-- Thủ tục: Xử lý lượt giữ ghế hết hạn (usp_expire_seat_holds)
 CREATE OR ALTER PROCEDURE dbo.usp_expire_seat_holds
 AS
 BEGIN
@@ -458,7 +458,7 @@ BEGIN
 END;
 GO
 
--- Thủ tục: usp_cancel_pending_sale
+-- Thủ tục: Hủy hóa đơn chờ thanh toán (usp_cancel_pending_sale)
 CREATE OR ALTER PROCEDURE dbo.usp_cancel_pending_sale
     @sale_id BIGINT,@cancelled_by INT
 AS
@@ -488,7 +488,7 @@ BEGIN
 END;
 GO
 
--- Thủ tục: usp_checkin_ticket
+-- Thủ tục: Soát vé (usp_checkin_ticket)
 CREATE OR ALTER PROCEDURE dbo.usp_checkin_ticket
     @ticket_code VARCHAR(60),@usher_id INT
 AS
@@ -527,7 +527,7 @@ BEGIN
 END;
 GO
 
--- Thủ tục: usp_publish_showtime
+-- Thủ tục: Công bố suất chiếu (usp_publish_showtime)
 CREATE OR ALTER PROCEDURE dbo.usp_publish_showtime
     @showtime_id BIGINT,@manager_id INT,@clean_minutes INT = 15
 AS
