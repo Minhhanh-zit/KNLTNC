@@ -71,12 +71,3 @@ Người thực hiện đã chạy bộ thử nghiệm **trên SQL Server 2022 D
 
 > Kết quả này chứng minh **sáu kịch bản nêu trên** trong điều kiện đã thử, **không** có nghĩa mọi tính năng hoặc tình huống sản xuất đều đã được kiểm thử. Cần kiểm thử thêm trùng lịch, dữ liệu bất thường, retry, lỗi kết nối, thanh toán đến muộn và phân quyền ở tầng API.
 
-## 5. Cách tạo cơ sở dữ liệu
-
-1. Chuẩn bị **SQL Server 2022** và một **instance/database thử nghiệm trống**.
-2. Mở `database/01_cinema_management_schema_v4.sql` bằng SSMS, Azure Data Studio hoặc công cụ chạy T-SQL hỗ trợ `GO`.
-3. Chạy script trên môi trường mới. Script sẽ tạo `CinemaManagementDB` nếu chưa tồn tại, rồi tạo bảng/ràng buộc/view/stored procedure.
-
-**Lưu ý:** script **tạo mới**, không phải migration và **không nên chạy lại trên database đã có bảng**. `GO` là dấu phân tách batch của công cụ SQL, không phải lệnh T-SQL hợp lệ để gửi nguyên tệp qua một câu lệnh JDBC.
-
-Khi tích hợp Spring Boot, tài khoản của ứng dụng không nên được quyền cập nhật trực tiếp các bảng giao dịch ngoài cơ chế nghiệp vụ đã kiểm soát.
