@@ -1,8 +1,6 @@
-// Hệ thống quản lý rạp phim - MVP 14 bảng (V4 GIỮ GHẾ ĐÃ DUYỆT)
-// Copy vào https://dbdiagram.io để xem ERD. SQL Server là hệ quản trị CSDL dự kiến.
+// Hệ thống quản lý rạp phim | ERD V4 | SQL Server
 Project CinemaManagement {
   database_type: 'SQL Server'
-  Note: '20 Use Cases; 14 tables; 20 FKs. Hold expiry belongs to sales; no repeated expiry per seat; 20 FKs.'
 }
 Table roles {
   role_id INT [pk, increment]
@@ -33,7 +31,6 @@ Table movies {
   release_date DATE
   age_rating VARCHAR(10) [not null]
   status VARCHAR(20) [not null, default: 'DRAFT']
-  Note: 'age_rating supports P/K/T13/T16/T18/C; movies are archived, not hard-deleted.'
 }
 Table genres {
   genre_id INT [pk, increment]
@@ -76,30 +73,28 @@ Table showtimes {
   base_price DECIMAL(12,2) [not null]
   status VARCHAR(20) [not null, default: 'DRAFT']
   created_by INT [not null]
-  Note: 'Reject overlapping times for the same room within transaction; ends_at > starts_at.'
 }
 Table showtime_seats {
   showtime_seat_id BIGINT [pk, increment]
   showtime_id BIGINT [not null]
   seat_id INT [not null]
-  held_sale_id BIGINT [note: 'Nullable FK to pending sales; holder of active reservation']
-  held_unit_price DECIMAL(12,2) [note: 'Quoted ticket price frozen during hold; nullable when unheld']
+  held_sale_id BIGINT 
+  held_unit_price DECIMAL(12,2) 
   indexes {
     (showtime_id, seat_id) [unique]
     (held_sale_id)
   }
-  Note: 'Both hold fields NULL together or both present. Hold expiry comes from sales. Prevent cross-showtime holds through stored procedures.'
 }
 Table sales {
   sale_id BIGINT [pk, increment]
   receipt_code VARCHAR(40) [not null, unique]
   showtime_id BIGINT [not null]
   cashier_id INT [not null]
-  status VARCHAR(20) [not null, default: 'PENDING', note: 'PENDING / PAID / CANCELLED / EXPIRED']
+  status VARCHAR(20) [not null, default: 'PENDING']
   created_at DATETIME2(0) [not null]
   completed_at DATETIME2(0)
-  hold_expires_at DATETIME2(3) [note: 'Shared UTC hold expiry for the entire sale; retain for audit']
-  held_seat_count INT [note: 'Number of held seats; confirm checks full group']
+  hold_expires_at DATETIME2(3) 
+  held_seat_count INT 
 }
 Table payments {
   payment_id BIGINT [pk, increment]
@@ -119,7 +114,6 @@ Table tickets {
   issued_at DATETIME2(0) [not null]
   checked_at DATETIME2(0)
   checked_by INT
-  Note: 'One successful check-in (checked_at / checked_by); guard with atomic conditional UPDATE.'
 }
 Ref: users.role_id > roles.role_id
 Ref: users.cinema_id > cinemas.cinema_id
@@ -141,15 +135,4 @@ Ref: payments.confirmed_by > users.user_id
 Ref: tickets.sale_id > sales.sale_id
 Ref: tickets.showtime_seat_id > showtime_seats.showtime_seat_id
 Ref: tickets.checked_by > users.user_id
-
-// Reservation algorithm (SQL stored procedures in sibling .sql file):
-// (1) create PENDING sale; (2) atomically claim ALL requested showtime_seats
-// with held_sale_id and held_unit_price, shared hold_expires_at on sales (5-min default);
-// (3) after cashier confirms money received, in one transaction create payment,
-// tickets and mark sale PAID, clear hold fields;
-// (4) an expired hold is available immediately, even if cleanup has not run;
-// (5) late payment requires manual reconciliation/refund or customer reselecting.
-
-// can_sell view distinguishes an available reservation slot from permission to sell now.
-// Procedures: usp_hold_seats, usp_confirm_sale_and_issue_tickets, usp_expire_seat_holds,
 // usp_cancel_pending_sale, usp_checkin_ticket, usp_publish_showtime.
