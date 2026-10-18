@@ -1,5 +1,20 @@
 # HỆ THỐNG QUẢN LÝ RẠP PHIM
 
+## Thông tin đề tài và nhóm thực hiện
+
+- **Tên đề tài:** Hệ thống quản lý rạp phim
+- **Học phần:** Kỹ năng lập trình nâng cao
+- **Quy mô nhóm:** 05 thành viên
+- **Ký hiệu trong danh sách:** TCN
+
+| STT | Mã sinh viên | Họ và tên |
+|---:|---|---|
+| 1 | BIT246755 | Chu Thị Minh Hạnh |
+| 2 | BIT230239 | Phạm Phương Linh |
+| 3 | BIT240168 | Nguyễn Hà Trung Nam |
+| 4 | BIT240216 | Phạm Ngọc Thành |
+| 5 | BIT240241 | Nguyễn Quốc Tuấn |
+
 **Học phần:** Kỹ năng lập trình nâng cao  
 **Giai đoạn:** Phân tích yêu cầu và thiết kế CSDL/ERD  
 **Định hướng:** Java Spring Boot + Microsoft SQL Server 2022  
