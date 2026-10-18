@@ -1,5 +1,4 @@
 -- HỆ THỐNG QUẢN LÝ RẠP PHIM | SQL SERVER V4
--- Script tạo CSDL mới, không phải migration. Chạy bằng công cụ hỗ trợ GO.
 
 IF DB_ID(N'CinemaManagementDB') IS NULL
 BEGIN
