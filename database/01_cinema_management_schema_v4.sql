@@ -1,13 +1,6 @@
-/*
-HỆ THỐNG QUẢN LÝ RẠP PHIM - CSDL MVP
-Học phần: Lập trình nâng cao
-Microsoft SQL Server
-PHIÊN BẢN V4 - GIỮ GHẾ THEO HÓA ĐƠN. ĐÃ KIỂM THỬ 6/6 TÌNH HUỐNG TRÊN SQL SERVER 2022
-14 bảng, 20 khóa ngoại. sales giữ hạn chung; showtime_seats chỉ trỏ sale đang giữ.
-Mã này dùng để tạo mới CSDL; chưa có migration từ bản 14/15 bảng cũ.
-Chạy trong SSMS/Azure Data Studio/sqlcmd. GO là từ khóa phân tách batch,
-không gửi nguyên file chứa GO bằng một lệnh JDBC của Spring Boot.
-*/
+-- HỆ THỐNG QUẢN LÝ RẠP PHIM | SQL SERVER V4
+-- Script tạo CSDL mới, không phải migration. Chạy bằng công cụ hỗ trợ GO.
+
 IF DB_ID(N'CinemaManagementDB') IS NULL
 BEGIN
     CREATE DATABASE CinemaManagementDB;
@@ -16,7 +9,7 @@ GO
 USE CinemaManagementDB;
 GO
 
--- 01. Vai trò nhân viên
+-- Bảng: roles
 CREATE TABLE dbo.roles (
     role_id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_roles PRIMARY KEY,
     role_code VARCHAR(30) NOT NULL CONSTRAINT UQ_roles_code UNIQUE,
@@ -24,7 +17,7 @@ CREATE TABLE dbo.roles (
 );
 GO
 
--- 02. Rạp phim
+-- Bảng: cinemas
 CREATE TABLE dbo.cinemas (
     cinema_id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_cinemas PRIMARY KEY,
     cinema_name NVARCHAR(150) NOT NULL,
@@ -34,7 +27,7 @@ CREATE TABLE dbo.cinemas (
 );
 GO
 
--- 03. Nhân viên. Admin tổng có cinema_id NULL; nhân viên rạp cần được gắn rạp.
+-- Bảng: users
 CREATE TABLE dbo.[users] (
     user_id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_users PRIMARY KEY,
     role_id INT NOT NULL,
@@ -50,7 +43,7 @@ CREATE TABLE dbo.[users] (
 );
 GO
 
--- 04. Phim
+-- Bảng: movies
 CREATE TABLE dbo.movies (
     movie_id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_movies PRIMARY KEY,
     title NVARCHAR(250) NOT NULL,
@@ -65,7 +58,7 @@ CREATE TABLE dbo.movies (
 );
 GO
 
--- 05. Thể loại
+-- Bảng: genres
 CREATE TABLE dbo.genres (
     genre_id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_genres PRIMARY KEY,
     genre_name NVARCHAR(80) NOT NULL CONSTRAINT UQ_genres_name UNIQUE,
@@ -73,7 +66,7 @@ CREATE TABLE dbo.genres (
 );
 GO
 
--- 06. Bảng trung gian N-N giữa phim và thể loại
+-- Bảng: movie_genres
 CREATE TABLE dbo.movie_genres (
     movie_id INT NOT NULL,
     genre_id INT NOT NULL,
@@ -83,7 +76,7 @@ CREATE TABLE dbo.movie_genres (
 );
 GO
 
--- 07. Phòng chiếu
+-- Bảng: rooms
 CREATE TABLE dbo.rooms (
     room_id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_rooms PRIMARY KEY,
     cinema_id INT NOT NULL,
@@ -95,7 +88,7 @@ CREATE TABLE dbo.rooms (
 );
 GO
 
--- 08. Loại ghế
+-- Bảng: seat_types
 CREATE TABLE dbo.seat_types (
     seat_type_id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_seat_types PRIMARY KEY,
     type_name NVARCHAR(60) NOT NULL CONSTRAINT UQ_seat_types_name UNIQUE,
@@ -105,7 +98,7 @@ CREATE TABLE dbo.seat_types (
 );
 GO
 
--- 09. Ghế vật lý tại từng phòng
+-- Bảng: seats
 CREATE TABLE dbo.seats (
     seat_id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_seats PRIMARY KEY,
     room_id INT NOT NULL,
@@ -120,7 +113,7 @@ CREATE TABLE dbo.seats (
 );
 GO
 
--- 10. Lịch chiếu
+-- Bảng: showtimes
 CREATE TABLE dbo.showtimes (
     showtime_id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_showtimes PRIMARY KEY,
     movie_id INT NOT NULL,
@@ -142,13 +135,11 @@ CREATE INDEX IX_showtimes_room_start ON dbo.showtimes(room_id, starts_at);
 CREATE INDEX IX_showtimes_movie_start ON dbo.showtimes(movie_id, starts_at);
 GO
 
--- 11. Ghế theo suất + giữ tạm: không thêm bảng riêng cho lượt giữ ghế.
+-- Bảng: showtime_seats
 CREATE TABLE dbo.showtime_seats (
     showtime_seat_id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_showtime_seats PRIMARY KEY,
     showtime_id BIGINT NOT NULL,
     seat_id INT NOT NULL,
-    -- Một hóa đơn PENDING có thể giữ nhiều ghế; NULL nghĩa là không bị giữ.
-    -- Hệ thống lấy giờ UTC, không lưu trực tiếp trạng thái SOLD vì đã có tickets.
     held_sale_id BIGINT NULL,
     held_unit_price DECIMAL(12,2) NULL,
     CONSTRAINT CK_showtime_seats_hold_all_or_none CHECK (
@@ -165,7 +156,7 @@ CREATE INDEX IX_showtime_seats_held_sale ON dbo.showtime_seats(held_sale_id)
     WHERE held_sale_id IS NOT NULL;
 GO
 
--- 12. Hóa đơn tại quầy. Một hóa đơn thuộc một suất; EXPIRED khi hết thời gian giữ.
+-- Bảng: sales
 CREATE TABLE dbo.sales (
     sale_id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_sales PRIMARY KEY,
     receipt_code VARCHAR(40) NOT NULL CONSTRAINT UQ_sales_code UNIQUE,
@@ -174,7 +165,6 @@ CREATE TABLE dbo.sales (
     [status] VARCHAR(20) NOT NULL CONSTRAINT DF_sales_status DEFAULT ('PENDING'),
     created_at DATETIME2(0) NOT NULL CONSTRAINT DF_sales_created DEFAULT SYSUTCDATETIME(),
     completed_at DATETIME2(0) NULL,
-    -- Cả hóa đơn giữ chung một hạn; giữ số ghế để kiểm tra toàn bộ khi thanh toán.
     hold_expires_at DATETIME2(3) NULL,
     held_seat_count INT NULL,
     CONSTRAINT CK_sales_hold_pair CHECK (
@@ -191,14 +181,11 @@ CREATE INDEX IX_sales_showtime ON dbo.sales(showtime_id);
 CREATE INDEX IX_sales_hold_expiry ON dbo.sales([status], hold_expires_at)
     WHERE hold_expires_at IS NOT NULL;
 GO
--- FK tham chiếu ngược: showtime_seats tạo trước sales nên khai báo sau.
 ALTER TABLE dbo.showtime_seats ADD CONSTRAINT FK_showtime_seats_hold_sales
     FOREIGN KEY (held_sale_id) REFERENCES dbo.sales(sale_id);
 GO
 
--- 13. Xác nhận thanh toán tại quầy; MVP giữ tối đa một bản ghi theo hóa đơn.
--- Thất bại/nhập lại: có thể cập nhật bản ghi này, KHÔNG lưu lịch sử nhiều lần thử.
--- Nếu cần lịch sử attempts, bỏ UNIQUE(sale_id) và bổ sung quy tắc chỉ tối đa một PAID/sale.
+-- Bảng: payments
 CREATE TABLE dbo.payments (
     payment_id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_payments PRIMARY KEY,
     sale_id BIGINT NOT NULL CONSTRAINT UQ_payments_sale UNIQUE,
@@ -221,7 +208,7 @@ GO
 CREATE INDEX IX_payments_status_confirmed ON dbo.payments([status], confirmed_at);
 GO
 
--- 14. Vé: ghi nhận một lần soát vé tại chính bản ghi vé (không cần bảng checkins).
+-- Bảng: tickets
 CREATE TABLE dbo.tickets (
     ticket_id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_tickets PRIMARY KEY,
     sale_id BIGINT NOT NULL,
@@ -244,7 +231,6 @@ GO
 CREATE INDEX IX_tickets_sale ON dbo.tickets(sale_id);
 GO
 
--- Dữ liệu cấu hình mẫu (không có tài khoản hay mật khẩu thật).
 INSERT INTO dbo.roles(role_code,role_name)
 SELECT v.role_code,v.role_name
 FROM (VALUES ('ADMIN',N'Quản trị viên'),
@@ -255,16 +241,7 @@ WHERE NOT EXISTS (SELECT 1 FROM dbo.roles r WHERE r.role_code=v.role_code);
 GO
 
 
-/* --------------------------------------------------------------------------
-NGUYÊN TẮC GIỮ GHẾ V4
-- AVAILABLE: không có ticket và (held_sale_id NULL hoặc sale giữ đã hết hạn/không PENDING).
-- HELD: chưa có ticket, sale giữ ở PENDING và sales.hold_expires_at > UTC.
-- SOLD: tồn tại tickets theo showtime_seat_id.
-- can_sell là thuộc tính RIÊNG: còn hoạt động, chưa bắt đầu suất, phòng mở.
-- Toàn bộ ghế cùng hóa đơn dùng sales.hold_expires_at, không lặp hạn trên từng ghế.
-- Chỉ cho Backend thực thi stored procedure; cấm quyền DML trực tiếp cho role ứng dụng.
-- Chuyển khoản muộn cần đối soát ngoại hệ thống, tuyệt đối không tự phát hành vé.
-*/
+
 GO
 
 CREATE OR ALTER VIEW dbo.vw_showtime_seat_availability AS
@@ -290,7 +267,7 @@ LEFT JOIN dbo.sales s ON s.sale_id=ss.held_sale_id
 LEFT JOIN dbo.tickets t ON t.showtime_seat_id=ss.showtime_seat_id;
 GO
 
--- PROC 1: Giữ TẤT CẢ ghế trong giao dịch ngắn; @seat_ids là showtime_seat_id.
+-- Thủ tục: usp_hold_seats
 CREATE OR ALTER PROCEDURE dbo.usp_hold_seats
     @sale_id BIGINT, @seat_ids NVARCHAR(MAX), @requested_by INT, @hold_minutes INT = 5
 AS
@@ -332,7 +309,6 @@ BEGIN
               AND st.[status]='PUBLISHED')
             THROW 51006, N'Sai quyền/rạp hoặc phim, phòng, suất không hoạt động.', 1;
 
-        -- Khóa hàng ghế trước khi lấy thời gian hiện tại, tránh dùng @now cũ lúc chờ khóa.
         SELECT @locked=COUNT(*)
         FROM dbo.showtime_seats ss WITH (UPDLOCK,HOLDLOCK)
         JOIN @ids i ON i.id=ss.showtime_seat_id
@@ -377,7 +353,7 @@ BEGIN
 END;
 GO
 
--- PROC 2: Xác nhận tiền đã nhận và cấp vé, kiểm tra hết hạn SAU khi lấy khóa.
+-- Thủ tục: usp_confirm_sale_and_issue_tickets
 CREATE OR ALTER PROCEDURE dbo.usp_confirm_sale_and_issue_tickets
     @sale_id BIGINT,@method VARCHAR(20),@confirmed_by INT
 AS
@@ -406,7 +382,6 @@ BEGIN
               AND ro.role_code='CASHIER' AND u.cinema_id=rm.cinema_id)
             THROW 51103, N'Nhân viên không có quyền xác nhận hóa đơn ở rạp này.', 1;
 
-        -- Lấy khóa cho TOÀN BỘ ghế thuộc hóa đơn, rồi mới lấy giờ mới.
         SELECT @locked=COUNT(*) FROM dbo.showtime_seats ss WITH (UPDLOCK,HOLDLOCK)
         WHERE ss.held_sale_id=@sale_id;
         INSERT INTO @held(showtime_seat_id,unit_price)
@@ -448,7 +423,6 @@ BEGIN
         UPDATE ss SET held_sale_id=NULL,held_unit_price=NULL
         FROM dbo.showtime_seats ss JOIN @held h ON h.showtime_seat_id=ss.showtime_seat_id
         WHERE ss.held_sale_id=@sale_id;
-        -- Kiểm tra sát COMMIT để hạn chế trường hợp quá hạn trong lúc thao tác SQL.
         IF @expiry<=SYSUTCDATETIME()
             THROW 51110, N'Đã hết thời hạn trước khi giao dịch hoàn tất.', 1;
         COMMIT TRANSACTION;
@@ -461,7 +435,7 @@ BEGIN
 END;
 GO
 
--- PROC 3: Dọn tất cả sales hết hạn dựa vào sales, KHÔNG dựa vào ghế còn liên kết.
+-- Thủ tục: usp_expire_seat_holds
 CREATE OR ALTER PROCEDURE dbo.usp_expire_seat_holds
 AS
 BEGIN
@@ -485,7 +459,7 @@ BEGIN
 END;
 GO
 
--- PROC 4: Hủy hóa đơn và giải phóng ghế; kiểm tra cùng cashier, đúng rạp.
+-- Thủ tục: usp_cancel_pending_sale
 CREATE OR ALTER PROCEDURE dbo.usp_cancel_pending_sale
     @sale_id BIGINT,@cancelled_by INT
 AS
@@ -515,7 +489,7 @@ BEGIN
 END;
 GO
 
--- PROC 5: Soát vé nguyên tử, 1 vé đúng 1 lần, kiểm tra role và rạp.
+-- Thủ tục: usp_checkin_ticket
 CREATE OR ALTER PROCEDURE dbo.usp_checkin_ticket
     @ticket_code VARCHAR(60),@usher_id INT
 AS
@@ -537,7 +511,6 @@ BEGIN
         JOIN dbo.roles ro ON ro.role_id=u.role_id
         WHERE t.ticket_code=@ticket_code AND t.checked_at IS NULL
           AND u.[status]='ACTIVE' AND ro.role_code='USHER' AND u.cinema_id=rm.cinema_id
-          -- Cửa sổ soát vé demo đề xuất, chưa có xác nhận nghiệp vụ của giảng viên:
           AND TODATETIMEOFFSET(SYSUTCDATETIME(),'+00:00') BETWEEN
               DATEADD(MINUTE,-30,st.starts_at) AND DATEADD(MINUTE,30,st.ends_at);
         IF @ticket_id IS NULL
@@ -555,7 +528,7 @@ BEGIN
 END;
 GO
 
--- PROC 6: Công bố suất chiếu, chặn trùng phòng. Cần gọi qua API, không trực tiếp DML.
+-- Thủ tục: usp_publish_showtime
 CREATE OR ALTER PROCEDURE dbo.usp_publish_showtime
     @showtime_id BIGINT,@manager_id INT,@clean_minutes INT = 15
 AS
@@ -605,11 +578,3 @@ BEGIN
     END CATCH
 END;
 GO
-
-/* CÁCH SỬ DỤNG: Tạo sales PENDING, gọi usp_hold_seats; sau khi kiểm tiền gọi
-   usp_confirm_sale_and_issue_tickets; gọi usp_expire_seat_holds định kỳ. Gọi
-   usp_checkin_ticket khi quét; usp_publish_showtime để công bố lịch.
-   Không mở SQL transaction xuyên suốt thời gian khách chuyển khoản.
-   Không cấp quyền INSERT/UPDATE/DELETE trực tiếp vào các bảng nghiệp vụ cho
-   tài khoản DB của ứng dụng khi triển khai thực tế. Mã đây là bản tạo mới DB,
-   không phải script migration từ V3 hoặc từ GitHub. Đã kiểm thử 6 tình huống giữ ghế/thanh toán trên SQL Server 2022; cần kiểm thử thêm trước triển khai. */
