@@ -1,7 +1,4 @@
-/* HỆ THỐNG QUẢN LÝ RẠP PHIM: BẢN HỢP NHẤT V4 + V5 (HAI KÊNH), SQL SERVER 2022
-   Script chỉ dùng cho DB MỚI, KHÔNG phải migration. Thành viên nhóm đã báo cáo log 15/15 ca kiểm thử PASS trên SQL Server 2022; không thay thế kiểm thử toàn bộ hệ thống.
-   Cổng thanh toán là mô phỏng; backend phải tự xác minh chữ ký và đối soát với cổng.
-   Không cung cấp quyền cập nhật bảng nghiệp vụ trực tiếp cho tài khoản ứng dụng. */
+/* HỆ THỐNG QUẢN LÝ RẠP PHIM:*/
 IF DB_ID(N'CinemaManagementV5_DualChannel') IS NULL
 BEGIN
     CREATE DATABASE CinemaManagementV5_DualChannel;
@@ -208,7 +205,7 @@ ALTER TABLE dbo.showtime_seats ADD CONSTRAINT FK_showtime_seats_hold_sales
     FOREIGN KEY (held_sale_id) REFERENCES dbo.sales(sale_id);
 GO
 
--- 13. Xác nhận thanh toán tại quầy; V5: bản ghi thanh toán cuối cùng là duy nhất theo hóa đơn.
+-- 13. Xác nhận thanh toán tại quầy; bản ghi thanh toán cuối cùng là duy nhất theo hóa đơn.
 -- Thất bại/nhập lại: có thể cập nhật bản ghi này, KHÔNG lưu lịch sử nhiều lần thử.
 -- Lịch sử thử thanh toán đã lưu riêng trong payment_attempts.
 -- Lịch sử lựa chọn ghế theo đơn. Có thể tồn tại nhiều đơn hết hạn cùng ghế, nhưng chỉ một ticket hợp lệ.
@@ -331,8 +328,7 @@ WHERE NOT EXISTS (SELECT 1 FROM dbo.roles r WHERE r.role_code=v.role_code);
 GO
 
 
-/* --------------------------------------------------------------------------
-NGUYÊN TẮC GIỮ GHẾ V5
+/* NGUYÊN TẮC GIỮ GHẾ 
 - AVAILABLE: không có ticket và (held_sale_id NULL hoặc sale giữ đã hết hạn/không PENDING).
 - HELD: chưa có ticket, sale giữ ở PENDING và sales.hold_expires_at > UTC.
 - SOLD: tồn tại tickets theo showtime_seat_id.
