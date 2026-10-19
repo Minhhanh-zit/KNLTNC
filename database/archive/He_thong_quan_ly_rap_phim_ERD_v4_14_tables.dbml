@@ -1,0 +1,151 @@
+// Hệ thống quản lý rạp phim | Sơ đồ quan hệ cơ sở dữ liệu V4
+Project CinemaManagement {
+  database_type: 'SQL Server'
+}
+Table roles {
+  Note: 'Vai trò và phân quyền'
+  role_id INT [pk, increment]
+  role_code VARCHAR(30) [not null, unique]
+  role_name NVARCHAR(80) [not null]
+}
+Table cinemas {
+  Note: 'Thông tin rạp phim'
+  cinema_id INT [pk, increment]
+  cinema_name NVARCHAR(150) [not null]
+  address NVARCHAR(255) [not null]
+  status VARCHAR(20) [not null, default: 'ACTIVE']
+}
+Table users {
+  Note: 'Tài khoản nhân viên'
+  user_id INT [pk, increment]
+  role_id INT [not null]
+  cinema_id INT
+  username VARCHAR(80) [not null, unique]
+  full_name NVARCHAR(120) [not null]
+  password_hash VARCHAR(255) [not null]
+  status VARCHAR(20) [not null, default: 'ACTIVE']
+  created_at DATETIME2(0) [not null]
+}
+Table movies {
+  Note: 'Thông tin phim'
+  movie_id INT [pk, increment]
+  title NVARCHAR(250) [not null]
+  description NVARCHAR(MAX)
+  duration_minutes INT [not null]
+  release_date DATE
+  age_rating VARCHAR(10) [not null]
+  status VARCHAR(20) [not null, default: 'DRAFT']
+}
+Table genres {
+  Note: 'Thể loại phim'
+  genre_id INT [pk, increment]
+  genre_name NVARCHAR(80) [not null, unique]
+  is_active BIT [not null, default: 1]
+}
+Table movie_genres {
+  Note: 'Liên kết phim và thể loại'
+  movie_id INT [not null]
+  genre_id INT [not null]
+  indexes { (movie_id, genre_id) [pk] }
+}
+Table rooms {
+  Note: 'Phòng chiếu'
+  room_id INT [pk, increment]
+  cinema_id INT [not null]
+  room_name NVARCHAR(80) [not null]
+  status VARCHAR(20) [not null, default: 'ACTIVE']
+  indexes { (cinema_id, room_name) [unique] }
+}
+Table seat_types {
+  Note: 'Loại ghế và phụ thu'
+  seat_type_id INT [pk, increment]
+  type_name NVARCHAR(60) [not null, unique]
+  price_surcharge DECIMAL(12,2) [not null, default: 0]
+  is_active BIT [not null, default: 1]
+}
+Table seats {
+  Note: 'Ghế trong phòng chiếu'
+  seat_id INT [pk, increment]
+  room_id INT [not null]
+  seat_type_id INT [not null]
+  row_label VARCHAR(5) [not null]
+  seat_number INT [not null]
+  is_active BIT [not null, default: 1]
+  indexes { (room_id, row_label, seat_number) [unique] }
+}
+Table showtimes {
+  Note: 'Lịch chiếu phim'
+  showtime_id BIGINT [pk, increment]
+  movie_id INT [not null]
+  room_id INT [not null]
+  starts_at DATETIMEOFFSET(0) [not null]
+  ends_at DATETIMEOFFSET(0) [not null]
+  base_price DECIMAL(12,2) [not null]
+  status VARCHAR(20) [not null, default: 'DRAFT']
+  created_by INT [not null]
+}
+Table showtime_seats {
+  Note: 'Ghế theo từng suất chiếu'
+  showtime_seat_id BIGINT [pk, increment]
+  showtime_id BIGINT [not null]
+  seat_id INT [not null]
+  held_sale_id BIGINT 
+  held_unit_price DECIMAL(12,2) 
+  indexes {
+    (showtime_id, seat_id) [unique]
+    (held_sale_id)
+  }
+}
+Table sales {
+  Note: 'Hóa đơn bán vé và thời hạn giữ ghế'
+  sale_id BIGINT [pk, increment]
+  receipt_code VARCHAR(40) [not null, unique]
+  showtime_id BIGINT [not null]
+  cashier_id INT [not null]
+  status VARCHAR(20) [not null, default: 'PENDING']
+  created_at DATETIME2(0) [not null]
+  completed_at DATETIME2(0)
+  hold_expires_at DATETIME2(3) 
+  held_seat_count INT 
+}
+Table payments {
+  Note: 'Thanh toán hóa đơn'
+  payment_id BIGINT [pk, increment]
+  sale_id BIGINT [not null, unique]
+  amount DECIMAL(12,2) [not null]
+  method VARCHAR(20) [not null]
+  status VARCHAR(20) [not null]
+  confirmed_by INT
+  confirmed_at DATETIME2(0)
+}
+Table tickets {
+  Note: 'Vé xem phim và trạng thái soát vé'
+  ticket_id BIGINT [pk, increment]
+  sale_id BIGINT [not null]
+  showtime_seat_id BIGINT [not null, unique]
+  ticket_code VARCHAR(60) [not null, unique]
+  unit_price DECIMAL(12,2) [not null]
+  issued_at DATETIME2(0) [not null]
+  checked_at DATETIME2(0)
+  checked_by INT
+}
+Ref: users.role_id > roles.role_id
+Ref: users.cinema_id > cinemas.cinema_id
+Ref: movie_genres.movie_id > movies.movie_id
+Ref: movie_genres.genre_id > genres.genre_id
+Ref: rooms.cinema_id > cinemas.cinema_id
+Ref: seats.room_id > rooms.room_id
+Ref: seats.seat_type_id > seat_types.seat_type_id
+Ref: showtimes.movie_id > movies.movie_id
+Ref: showtimes.room_id > rooms.room_id
+Ref: showtimes.created_by > users.user_id
+Ref: showtime_seats.showtime_id > showtimes.showtime_id
+Ref: showtime_seats.seat_id > seats.seat_id
+Ref: showtime_seats.held_sale_id > sales.sale_id
+Ref: sales.showtime_id > showtimes.showtime_id
+Ref: sales.cashier_id > users.user_id
+Ref: payments.sale_id > sales.sale_id
+Ref: payments.confirmed_by > users.user_id
+Ref: tickets.sale_id > sales.sale_id
+Ref: tickets.showtime_seat_id > showtime_seats.showtime_seat_id
+Ref: tickets.checked_by > users.user_id
