@@ -2,8 +2,8 @@
 
 **Học phần:** Kỹ năng lập trình nâng cao  
 **Nhóm:** TCN  
-**Giai đoạn hiện tại:** Thiết kế và kiểm thử cơ sở dữ liệu V4  
-**Công nghệ CSDL:** Microsoft SQL Server 2022
+**Công nghệ cơ sở dữ liệu:** Microsoft SQL Server 2022  
+**Trạng thái:** Thiết kế CSDL hợp nhất V4 + V5, đã kiểm thử 15 tình huống trên SQL Server TEST theo log nhóm.
 
 ## Thành viên
 
@@ -15,38 +15,59 @@
 | 4 | BIT240216 | Phạm Ngọc Thành |
 | 5 | BIT240241 | Nguyễn Quốc Tuấn |
 
-## Những gì hiện có trong repository
+## CSDL hợp nhất V4 + V5
+
+Giữ các chức năng quản lý rạp, phòng, phim, lịch chiếu và bán vé tại quầy của V4; bổ sung luồng **đặt vé online** và **thanh toán qua cổng giả lập**, lịch sử giữ ghế và lịch sử các lượt/sự kiện thanh toán từ V5.
+
+**Thiết kế hiện tại:** 17 bảng, 30 khóa ngoại, 9 stored procedure, 3 view.
+
+**17 bảng:** `roles`, `cinemas`, `users`, `movies`, `genres`, `movie_genres`, `rooms`, `seat_types`, `seats`, `showtimes`, `showtime_seats`, `sales`, `payments`, `tickets`, `booking_seats`, `payment_attempts`, `payment_events`.
+
+Các chức năng có trong SQL bao gồm quản lý giữ ghế, tạo đơn theo kênh, xác nhận thanh toán tại quầy, tạo lượt thanh toán giả lập, nhận sự kiện đã xác minh từ backend, dọn giữ ghế hết hạn, hủy đơn chờ, soát vé và công bố suất chiếu.
+
+## Tệp chính
 
 | Tệp | Nội dung |
 |---|---|
-| [SQL Server V4](database/01_cinema_management_schema_v4.sql) | Script tạo mới CSDL, **14 bảng, 20 khóa ngoại**, một view và **6 stored procedure** |
-| [ERD DBML](database/He_thong_quan_ly_rap_phim_ERD.dbml) | Sơ đồ 14 bảng và 20 quan hệ FK, có ghi chú tiếng Việt |
+| [SQL hợp nhất](database/01_cinema_management_schema_v4.sql) | **Bản đang dùng**: SQL V4 + V5, thiết kế 17 bảng và hai kênh bán. Giữ tên file V4 để bảo toàn liên kết cũ. |
+| [ERD hợp nhất](database/He_thong_quan_ly_rap_phim_ERD.dbml) | Sơ đồ 17 bảng và 30 quan hệ khóa ngoại. |
+| [Bộ kiểm thử 15 ca](tests/kiem_thu_sqlserver_15_tinh_huong.py) | Python + pyodbc, chỉ cho phép kết nối `localhost,14331`. |
+| [SQL V4 gốc](database/archive/01_cinema_management_schema_v4_original_14_tables.sql) | Bản V4 nguyên gốc 14 bảng, được sao lưu trước khi hợp nhất. |
+| [ERD V4 gốc](database/archive/He_thong_quan_ly_rap_phim_ERD_v4_14_tables.dbml) | Sơ đồ cũ 14 bảng, lưu để so sánh. |
 
-**14 bảng:** `roles`, `cinemas`, `users`, `movies`, `genres`, `movie_genres`, `rooms`, `seat_types`, `seats`, `showtimes`, `showtime_seats`, `sales`, `payments`, `tickets`.
+**Lưu ý tên:** Đường dẫn SQL vẫn có đuôi `_v4.sql` theo yêu cầu hợp nhất ngay vào V4, nhưng **nội dung hiện tại không còn là V4 14 bảng**. Tên database được SQL tạo mới là `CinemaManagementV5_DualChannel` để tránh vô tình ghi đè DB V4 đã có.
 
-### Hai điểm cần hiểu trong V4
+## Bằng chứng kiểm thử
 
-- `seats` là ghế vật lý; `showtime_seats` là ghế thuộc một suất chiếu cụ thể.
-- Giữ ghế tạm thời bằng `showtime_seats.held_sale_id`; thời hạn giữ chung cho cả hóa đơn nằm tại `sales.hold_expires_at`. Thanh toán hợp lệ mới phát hành vé `tickets`.
+- V4 gốc: 6/6 ca PASS trên SQL Server 2022, theo log nhóm trước khi hợp nhất.
+- Bản hai kênh hợp nhất: **15/15 ca PASS trên Microsoft SQL Server 2022**, theo log Terminal do nhóm cung cấp ngày 19/10/2026.
+- 15 tình huống gồm giữ ghế cạnh tranh, chống bán trùng, thời hạn giữ theo kênh, phân quyền, online nhận vé/trả tiền tại quầy, callback lặp, thanh toán đến muộn, đối soát, giới hạn payment attempt, ràng buộc FK chéo suất/đơn, sai số tiền và xác nhận tiền tại quầy hai lần.
 
-## Kết quả kiểm thử đã thực hiện
+Đây là kết quả **bộ kiểm thử SQL có phạm vi xác định**. Chưa chứng minh toàn bộ hệ thống hoạt động hoàn thiện, chưa thay thế kiểm thử bảo mật, hiệu năng, tải cao hay backend/frontend.
 
-Thành viên nhóm đã chạy bộ kiểm thử V4 trên **Microsoft SQL Server 2022 bằng Docker** và cung cấp log **6/6 PASS**:
+## Chạy lại kiểm thử trên Mac
 
-1. Hai quầy cùng giữ ghế A5: chỉ một quầy thành công.
-2. Giữ A5 và A6 khi A6 đã bán: rollback toàn bộ.
-3. Hóa đơn A hết hạn: A thành `EXPIRED`, B giữ lại được ghế.
-4. Thanh toán khi đã hết hạn: không phát hành vé.
-5. Xác nhận thanh toán hai lần: chỉ một payment và một ticket.
-6. Nhân viên khác rạp: không được giữ hoặc xác nhận hóa đơn.
+Cần SQL Server TEST đã chạy trên `localhost,14331`, ODBC Driver 18 và `pyodbc`.
 
-**Giới hạn bằng chứng:** 6/6 là kết quả của **sáu ca nêu trên**, không chứng minh toàn bộ chức năng đã hoàn tất. Bộ kiểm thử Python đã chạy trên máy của thành viên; **chưa được lưu trong repository này**.
+```bash
+python -m pip install pyodbc
+export SQLSERVER_HOST='localhost,14331'
+export SQLSERVER_USER='sa'
+read -s 'SQLSERVER_PASSWORD?Nhập mật khẩu SQL Server TEST: '
+echo
+export SQLSERVER_PASSWORD
+python -u tests/kiem_thu_sqlserver_15_tinh_huong.py
+```
 
-## Cách xem và sử dụng database
+Bộ kiểm thử tạo một database **có tên ngẫu nhiên** `CinemaV5_TEST_<mã>` trên instance test, cài schema, chạy 15 ca rồi xóa database này khi kết thúc theo đúng luồng. Nếu script bị ngắt, database test có thể còn và cần kiểm tra thủ công. **Không chạy trên các instance đang chứa dữ liệu quan trọng.**
 
-1. Mở tệp `.dbml` trong [dbdiagram.io](https://dbdiagram.io) để xem ERD.
-2. Dùng **môi trường SQL Server thử nghiệm trống** và công cụ chạy T-SQL hỗ trợ lệnh tách batch `GO`.
-3. Chạy script SQL V4 để tạo `CinemaManagementDB`. **Script này dùng để tạo mới, không phải migration**; không chạy chồng lên cơ sở dữ liệu đang có dữ liệu quan trọng.
+**SQL hợp nhất là script tạo mới, không phải migration từ V4 sang V5.** Không chạy trực tiếp lên database V4 cũ đã có dữ liệu thật. Để xem ERD, mở tệp `.dbml` bằng [dbdiagram.io](https://dbdiagram.io).
 
-**Trạng thái dự án:** Repository hiện chỉ chứa mã thiết kế CSDL và ERD, **chưa có ứng dụng Java Spring Boot, frontend hoặc chức năng báo cáo doanh thu được triển khai trong repo**. Những nghiệp vụ khác đang thuộc phạm vi thiết kế/định hướng, không được coi là đã lập trình xong.
+## Giới hạn hiện tại
+
+- Chưa có ứng dụng Spring Boot hoặc frontend hoàn chỉnh trong repository.
+- Cổng thanh toán hiện là `MOCK_GATEWAY`, chưa tích hợp thanh toán thật hoặc xác minh webhook thật.
+- 3 view là truy vấn SQL, không đồng nghĩa đã có giao diện báo cáo.
+- Thời hạn giữ ghế mặc định 5 phút cho quầy/online gateway và 30 phút cho online trả tại quầy là chính sách demo, cần được nhóm/giảng viên xác nhận.
+- Các Use Case trong tài liệu thiết kế không phải tất cả đều đã được lập trình.
 
