@@ -2,8 +2,6 @@
 
 **Học phần:** Kỹ năng lập trình nâng cao  
 **Nhóm:** TCN  
-**Công nghệ cơ sở dữ liệu:** Microsoft SQL Server 2022  
-**Trạng thái:** Thiết kế CSDL hợp nhất V4 + V5, đã kiểm thử 15 tình huống trên SQL Server TEST theo log nhóm.
 
 ## Thành viên
 
