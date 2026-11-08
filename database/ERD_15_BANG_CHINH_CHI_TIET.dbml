@@ -1,0 +1,210 @@
+// ERD TOI GIAN: 15 BANG NGHIEP VU CHINH, CHI TIET CAC COT.
+// 17 bang V5 trong SQL goc van duoc giu nguyen; so do nay AN cac bang ky thuat:
+// roles, genres, movie_genres, seat_types, payment_attempts, payment_events.
+// Khong duoc dung file so do 15 bang nay de XOA 6 bang tren.
+// Truong bo sung duoc danh dau // MOI; phai chay 02_main_tables_detail_PROPOSAL.sql.
+Project CinemaMainEntities {
+  database_type: 'SQL Server'
+  Note: 'Mo hinh don gian hoa phuc vu thao luan. 15 bang hien thi; co so du lieu thuc te 17 bang nen + 4 bang de xuat.'
+}
+Table users {
+  Note: 'Tai khoan khach hang va nhan vien; role_id tham chieu roles trong SQL V5 (an o so do). CCCD khong bat buoc.'
+  user_id INT [pk, increment]
+  role_id INT [not null]
+  cinema_id INT
+  username VARCHAR(80) [unique, not null]
+  full_name NVARCHAR(120) [not null]
+  email NVARCHAR(160)
+  phone VARCHAR(20)
+  password_hash VARCHAR(255) [not null]
+  status VARCHAR(20) [not null]
+  created_at DATETIME2(0) [not null]
+  date_of_birth DATE // MOI
+  gender VARCHAR(10) // MOI, tuy chon
+  address_line NVARCHAR(255) // MOI
+  avatar_url NVARCHAR(500) // MOI
+}
+Table employee_profiles {
+  Note: 'Ho so nhan vien: 1 tai khoan nhan vien co toi da 1 ho so; thong tin hop dong o muc co ban.'
+  employee_id INT [pk, increment]
+  user_id INT [unique, not null]
+  employee_code VARCHAR(30) [unique, not null]
+  position_title NVARCHAR(100) [not null]
+  hire_date DATE [not null]
+  contract_type VARCHAR(30)
+  contract_start DATE
+  contract_end DATE
+  base_salary DECIMAL(14,2)
+  employment_status VARCHAR(20) [not null]
+}
+Table employee_shifts {
+  Note: 'Phan ca va cham cong don gian. Chuc nang nghi phep va tinh luong chi tiet de giai doan mo rong.'
+  shift_assignment_id BIGINT [pk, increment]
+  employee_id INT [not null]
+  cinema_id INT [not null]
+  shift_start DATETIME2(0) [not null]
+  shift_end DATETIME2(0) [not null]
+  clock_in_at DATETIME2(0)
+  clock_out_at DATETIME2(0)
+  status VARCHAR(20) [not null]
+}
+Table cinemas {
+  cinema_id INT [pk, increment]
+  cinema_name NVARCHAR(150) [not null]
+  address NVARCHAR(255) [not null]
+  status VARCHAR(20) [not null]
+  cinema_code VARCHAR(30) [unique] // MOI
+  phone VARCHAR(20) // MOI
+  email NVARCHAR(160) // MOI
+}
+Table rooms {
+  room_id INT [pk, increment]
+  cinema_id INT [not null]
+  room_name NVARCHAR(80) [not null]
+  status VARCHAR(20) [not null]
+  projection_format VARCHAR(10) // MOI
+  notes NVARCHAR(255) // MOI
+}
+Table seats {
+  seat_id INT [pk, increment]
+  room_id INT [not null]
+  seat_type_id INT [not null] // ref toi seat_types, an tren ERD nay
+  row_label VARCHAR(5) [not null]
+  seat_number INT [not null]
+  is_active BIT [not null]
+  notes NVARCHAR(255) // MOI
+}
+Table movies {
+  movie_id INT [pk, increment]
+  title NVARCHAR(250) [not null]
+  description NVARCHAR(MAX)
+  duration_minutes INT [not null]
+  release_date DATE
+  age_rating VARCHAR(10) [not null]
+  status VARCHAR(20) [not null]
+  original_title NVARCHAR(250) // MOI
+  director NVARCHAR(200) // MOI
+  cast_text NVARCHAR(MAX) // MOI, mang ten dien vien
+  country NVARCHAR(100) // MOI
+  language NVARCHAR(100) // MOI
+  production_year SMALLINT // MOI
+  poster_url NVARCHAR(500) // MOI
+  trailer_url NVARCHAR(500) // MOI
+}
+Table showtimes {
+  showtime_id BIGINT [pk, increment]
+  movie_id INT [not null]
+  room_id INT [not null]
+  starts_at DATETIMEOFFSET(0) [not null]
+  ends_at DATETIMEOFFSET(0) [not null]
+  base_price DECIMAL(12,2) [not null]
+  status VARCHAR(20) [not null]
+  created_by INT [not null]
+  format_code VARCHAR(10) // MOI
+  cleaning_buffer_minutes INT // MOI
+}
+Table showtime_seats {
+  Note: 'Trang thai giu ghe theo suat. Trang thai da ban duoc suy ra tu tickets.'
+  showtime_seat_id BIGINT [pk, increment]
+  showtime_id BIGINT [not null]
+  seat_id INT [not null]
+  held_sale_id BIGINT
+  held_unit_price DECIMAL(12,2)
+}
+Table sales {
+  Note: 'Don mua ve online va tai quay; moi don gom mot suat chieu.'
+  sale_id BIGINT [pk, increment]
+  receipt_code VARCHAR(40) [unique, not null]
+  showtime_id BIGINT [not null]
+  cashier_id INT
+  customer_id INT
+  sales_channel VARCHAR(10) [not null]
+  payment_choice VARCHAR(20) [not null]
+  pickup_code_hash VARBINARY(32)
+  status VARCHAR(20) [not null]
+  created_at DATETIME2(0) [not null]
+  completed_at DATETIME2(0)
+  hold_expires_at DATETIME2(3)
+  held_seat_count INT
+  contact_name NVARCHAR(120) // MOI, ten nguoi mua tai thoi diem dat
+  contact_phone VARCHAR(20) // MOI
+  contact_email NVARCHAR(160) // MOI
+}
+Table booking_seats {
+  booking_seat_id BIGINT [pk, increment]
+  sale_id BIGINT [not null]
+  showtime_seat_id BIGINT [not null]
+  showtime_id BIGINT [not null]
+  quoted_price DECIMAL(12,2) [not null]
+}
+Table payments {
+  Note: 'Giao dich xac nhan cuoi; lich su thu va callback co bang rieng trong V5.'
+  payment_id BIGINT [pk, increment]
+  sale_id BIGINT [unique, not null]
+  amount DECIMAL(12,2) [not null]
+  method VARCHAR(20) [not null]
+  status VARCHAR(20) [not null]
+  confirmed_by INT
+  confirmed_at DATETIME2(0)
+  gateway_attempt_id BIGINT
+}
+Table tickets {
+  ticket_id BIGINT [pk, increment]
+  sale_id BIGINT [not null]
+  showtime_seat_id BIGINT [unique, not null]
+  booking_seat_id BIGINT [unique, not null]
+  ticket_code VARCHAR(60) [unique, not null]
+  unit_price DECIMAL(12,2) [not null]
+  issued_at DATETIME2(0) [not null]
+  checked_at DATETIME2(0)
+  checked_by INT
+}
+Table products {
+  Note: 'Danh muc bap nuoc combo; ton kho o muc don gian, chua co nhap xuat chi tiet.'
+  product_id INT [pk, increment]
+  product_code VARCHAR(30) [unique, not null]
+  product_name NVARCHAR(150) [not null]
+  category VARCHAR(30) [not null]
+  description NVARCHAR(500)
+  unit_name NVARCHAR(30) [not null]
+  price DECIMAL(12,2) [not null]
+  stock_quantity INT [not null]
+  image_url NVARCHAR(500)
+  is_active BIT [not null]
+}
+Table audit_logs {
+  Note: 'Luu thay doi nhay cam, khong luu mat khau/CCCD/payment secret.'
+  audit_id BIGINT [pk, increment]
+  actor_id INT
+  action VARCHAR(80) [not null]
+  entity_name VARCHAR(80) [not null]
+  entity_id VARCHAR(80)
+  old_values_json NVARCHAR(MAX)
+  new_values_json NVARCHAR(MAX)
+  actor_ip VARCHAR(45)
+  created_at DATETIME2(0) [not null]
+}
+Ref: users.cinema_id > cinemas.cinema_id
+Ref: employee_profiles.user_id > users.user_id
+Ref: employee_shifts.employee_id > employee_profiles.employee_id
+Ref: employee_shifts.cinema_id > cinemas.cinema_id
+Ref: rooms.cinema_id > cinemas.cinema_id
+Ref: seats.room_id > rooms.room_id
+Ref: showtimes.movie_id > movies.movie_id
+Ref: showtimes.room_id > rooms.room_id
+Ref: showtimes.created_by > users.user_id
+Ref: showtime_seats.showtime_id > showtimes.showtime_id
+Ref: showtime_seats.seat_id > seats.seat_id
+Ref: showtime_seats.held_sale_id > sales.sale_id
+Ref: sales.showtime_id > showtimes.showtime_id
+Ref: sales.cashier_id > users.user_id
+Ref: sales.customer_id > users.user_id
+Ref: booking_seats.sale_id > sales.sale_id
+Ref: booking_seats.showtime_seat_id > showtime_seats.showtime_seat_id
+Ref: payments.sale_id > sales.sale_id
+Ref: payments.confirmed_by > users.user_id
+Ref: tickets.sale_id > sales.sale_id
+Ref: tickets.showtime_seat_id > showtime_seats.showtime_seat_id
+Ref: tickets.booking_seat_id > booking_seats.booking_seat_id
+Ref: tickets.checked_by > users.user_id
+Ref: audit_logs.actor_id > users.user_id
